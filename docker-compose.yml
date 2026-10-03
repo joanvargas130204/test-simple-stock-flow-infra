@@ -1,0 +1,78 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: ssf_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: stockflow
+      MYSQL_USER: stockflow
+      MYSQL_PASSWORD: stockflow
+      MYSQL_ROOT_PASSWORD: root_stockflow_password
+    command: >
+      --default-authentication-plugin=caching_sha2_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_0900_ai_ci
+      --default-time-zone=+00:00
+      --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "stockflow", "-pstockflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - ssf_net
+
+  api:
+    build:
+      context: ../test-simple-stock-flow-api
+      dockerfile: Dockerfile
+    container_name: ssf_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: "Simple Stock Flow API"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: "base64:4Z8X31k3O8eB3+Z8+BwN8Qj8Z8+BwN8Qj8Z8+BwN8Qg="
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: stockflow
+      DB_USERNAME: stockflow
+      DB_PASSWORD: stockflow
+      JWT_SIGNING_KEY: "simple-stock-flow-default-jwt-secret-key-32-chars!"
+      ADMIN_EMAIL: "admin@stockflow.local"
+      ADMIN_PASSWORD: "AdminSecretPassword123!"
+      MEDIA_ROOT: "/var/www/html/public/media"
+    volumes:
+      - media_data:/var/www/html/public/media
+    networks:
+      - ssf_net
+    expose:
+      - "8000"
+
+  app:
+    build:
+      context: ../test-simple-stock-flow-app
+      dockerfile: Dockerfile
+    container_name: ssf_app
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    networks:
+      - ssf_net
+
+volumes:
+  db_data:
+  media_data:
+
+networks:
+  ssf_net:
+    driver: bridge

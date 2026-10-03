@@ -1,45 +1,46 @@
-# test-simple-stock-flow-infra
+# Simple Stock Flow — Infraestructura Docker
 
-> **Prueba técnica · Ficha ADSO 3413974**
-> Horario: de **9:00 a. m. a 3:00 p. m.** (15:00)
+Orquestación de contenedores para **Simple Stock Flow** mediante Docker Compose.
 
-Este repositorio es la **infraestructura** de *Simple Stock Flow*: contenedores, red, volúmenes y el motor de base de datos vacío. **Empieza vacío a propósito**: se construye en el fork de cada aprendiz.
+---
 
-## Instrucciones
+## 📦 Servicios Orquestados
 
-Cada aprendiz debe **crear el fork** de los seis repositorios del proyecto y **resolver el proyecto
-con el spec planteado**.
+1. **`db`** — MySQL 8.4 LTS
+   - Base de datos: `stockflow`
+   - Usuario: `stockflow`
+   - Colación: `utf8mb4_0900_ai_ci`
+   - Zona horaria: `+00:00` (UTC)
+   - Volumen persistente: `db_data`
 
-1. Hacer fork, a su cuenta de GitHub, de cada repositorio de la tabla del final.
-2. Leer el spec en [`test-simple-stock-flow-docs`](https://github.com/code-sena/test-simple-stock-flow-docs).
-   Se entrega en dos versiones: `spec-python/` y `spec-.net/`.
-3. Desarrollar en los forks.
+2. **`api`** — Backend Laravel 11 en Onion Architecture
+   - Expuesto internamente en el puerto `8000`
+   - Espera a que `db` esté en estado *healthy* antes de iniciar
+   - Aplica migraciones automáticamente al arrancar
+   - Volumen compartido de medios: `media_data`
 
-## El reto se desarrolla con React y PHP (Laravel)
+3. **`app`** — Frontend React 19 + Nginx
+   - Publicado en el puerto host `8080:80`
+   - Reverse proxy para `/api/` y `^~ /media/` hacia `api:8000`
+   - `client_max_body_size 6m`
 
-El spec está escrito para Python y para .NET, pero el reto **no** se hace en esos lenguajes:
+---
 
-| Capa | Tecnología del reto |
-|---|---|
-| Frontend | React |
-| Backend | PHP con Laravel |
+## 🚀 Puesta en Marcha
 
-Lo que el spec define sobre el negocio —historias, criterios de aceptación, reglas, contrato de la
-API, modelo de datos— se respeta. Lo que define sobre la tecnología se traduce a React y Laravel.
+```bash
+# 1. Clonar los repositorios hermanos en el mismo directorio raíz
+# 2. Levantar los 3 servicios con build
+docker compose up --build -d
 
-## La prueba no consiste en escribir el código
+# 3. Comprobar el estado de los contenedores
+docker compose ps
 
-El propósito principal es ver la **capacidad de desempeño con SDD** (*Spec-Driven Development*,
-desarrollo guiado por especificación): cómo se lee, se interpreta y se aplica una especificación
-para llevarla a un stack distinto. El código es el medio, no el fin.
+# 4. Ejecutar el script de verificación
+bash verify.sh
+```
 
-## Los seis repositorios
-
-| Repositorio | Qué va ahí |
-|---|---|
-| [`test-simple-stock-flow-docs`](https://github.com/code-sena/test-simple-stock-flow-docs) | El spec: `spec-python/` y `spec-.net/` |
-| [`test-simple-stock-flow-api`](https://github.com/code-sena/test-simple-stock-flow-api) | Backend en PHP (Laravel) |
-| [`test-simple-stock-flow-app`](https://github.com/code-sena/test-simple-stock-flow-app) | Frontend en React |
-| [`test-simple-stock-flow-page`](https://github.com/code-sena/test-simple-stock-flow-page) | Sitio público estático de presentación |
-| [`test-simple-stock-flow-infra`](https://github.com/code-sena/test-simple-stock-flow-infra) | Contenedores, red, volúmenes y motor de base de datos vacío |
-| [`test-simple-stock-flow-tool`](https://github.com/code-sena/test-simple-stock-flow-tool) | Utilidades: sembrador de datos de demostración |
+Para desarrollo local exponiendo los puertos `3306` (MySQL) y `8000` (API):
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
